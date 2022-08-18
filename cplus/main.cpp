@@ -42,6 +42,15 @@ void KeyboardEvent();
 void MouseEvent();
 void Example();
 
+void TrackBarEx();
+void OnLevelChange(int pos, void* userdata);
+void WriteData();
+void ReadData();
+void MaskSetTo();
+void CopyTo();
+void timeInverse();
+void SumEx();
+void NormalEx();
 
 int main() {
 
@@ -57,7 +66,15 @@ int main() {
 //	DrawText2();
 //	KeyboardEvent();
 //	MouseEvent();
-	Example();
+//	Example();
+//	TrackBarEx();
+//	WriteData();
+//	ReadData();
+//	MaskSetTo();
+//	CopyTo();
+//	timeInverse();
+//	SumEx();
+	NormalEx();
 	destroyAllWindows();
 	return 0;
 
@@ -592,15 +609,17 @@ void on_mouse(int event, int x, int y, int flags, void*) {
 		cout << "EVENT_LBUTTONUP: " << x << "," << y << endl;
 		break;
 	case EVENT_MOUSEMOVE:
-		if (flags & EVENT_FLAG_LBUTTON) {
+		if (flags & EVENT_FLAG_CTRLKEY) {
+			if (flags & EVENT_FLAG_LBUTTON) {
+				rec_pt2 = Point(x, y);
+				rectangle(img, rec_pt1, rec_pt2, Scalar(0, 255, 255), 2);
+				imshow("img", img);
+			}
+		}
+		else if (flags & EVENT_FLAG_LBUTTON) {
 			line(img, ptOld, Point(x, y), Scalar(0, 255, 255), 2);
 			imshow("img", img);
 			ptOld = Point(x, y);
-		}
-		if (flags & EVENT_FLAG_LBUTTON || flags & EVENT_FLAG_CTRLKEY) {
-			ptOld = Point(x, y);
-			rectangle(img, rec_pt1, rec_pt2, Scalar(0, 255, 255), 2);
-			imshow("img", img);
 		}
 		break;
 	default:
@@ -638,4 +657,178 @@ void Example() {
 	}
 	waitKey(0);
 }
+void TrackBarEx() {
+	Mat img = Mat::zeros(640, 480, CV_8UC1);
+	int value = 0;
 
+	namedWindow("image");
+	createTrackbar("level", "image", &value, 16, OnLevelChange, (void*)&img);
+	imshow("image", img);
+	waitKey(0);
+	return;
+}
+
+void OnLevelChange(int pos, void* userdata) {
+	Mat img = *(Mat*)userdata;
+
+	img.setTo(pos * 16);
+	imshow("image", img);
+}
+String filename = "mydata.json";
+
+void WriteData() {
+	String name = "Jane";
+	int age = 10;
+	Point pt1(100, 200);
+	vector<int> scores = { 80,90,50 };
+	Mat mat1 = (Mat_<float>(2, 2) << 1.0f, 1.5f, 2.0f, 3.2f);
+
+	FileStorage fs(filename, FileStorage::WRITE);
+	if (!fs.isOpened()) {
+		cerr << "file open err _write" << endl;
+		return;
+	}
+
+	fs << "name" << name;
+	fs << "age" << age;
+	fs << "point" << pt1;
+	fs << "scores" << scores;
+	fs << "data" << mat1;
+
+	fs.release();
+}
+void ReadData() {
+
+	String name;
+	int age;
+	Point pt1;
+	vector<int> scores;
+	Mat mat1;
+
+	FileStorage fs(filename, FileStorage::READ);
+	if (!fs.isOpened()) {
+		cerr << "file open err" << endl;
+		return;
+	}
+
+	fs["name"] >> name;
+	fs["age"] >> age;
+	fs["point"] >> pt1;
+	fs["scores"] >> scores;
+	fs["data"] >> mat1;
+
+	fs.release();
+
+	cout << "name : " << name << endl;
+	cout << "age : " << age << endl;
+	cout << "point : " << pt1 << endl;
+	cout << "scores : " << Mat(scores).t() << endl;
+	cout << "data : \n" << mat1 << endl;
+	waitKey(0);
+}
+
+void MaskSetTo() {
+
+	String path = IMG_PATH + (String)"lenna.bmp";
+	String pathMask = IMG_PATH + (String)"mask_smile.bmp";
+	Mat src = imread(path, IMREAD_COLOR);
+	Mat mask = imread(pathMask, IMREAD_GRAYSCALE);
+
+	if (src.empty() || mask.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	src.setTo(Scalar(0, 255, 255), mask);
+
+	imshow("src", src);
+	imshow("mask", mask);
+
+	waitKey(0);
+
+}
+
+void CopyTo() {
+
+	String path = IMG_PATH + (String)"airplane.bmp";
+	String pathMask = IMG_PATH + (String)"mask_plane.bmp";
+	String destination = IMG_PATH + (String)"field.bmp";
+
+
+	Mat src = imread(path, IMREAD_COLOR);
+	Mat mask = imread(pathMask, IMREAD_GRAYSCALE);
+	Mat dst = imread(destination, IMREAD_COLOR);
+
+	if (src.empty() || mask.empty() || dst.empty()) {
+		cerr << "image load" << endl;
+		return;
+	}
+
+	src.copyTo(dst, mask);
+	imshow("dst", dst);
+	waitKey(0);
+
+
+}
+
+void timeInverse() {
+	String path = IMG_PATH + (String)"lenna.bmp";
+	Mat src = imread(path, IMREAD_GRAYSCALE);
+
+	if (src.empty()) {
+		cerr << "image load fail" << endl;
+		return;
+	}
+	Mat dst(src.rows, src.cols, src.type());
+	TickMeter tm;
+
+	tm.start();
+
+	for (int j = 0; j < src.rows; j++) {
+		for (int i = 0; i < src.cols; i++) {
+			dst.at<uchar>(j, i) = ~dst.at<uchar>(j, i);
+		}
+	}
+
+	tm.stop();
+	cout << "image inverse took : " << tm.getAvgTimeMilli() << "ms" << endl;
+	waitKey(0);
+
+}
+
+void SumEx() {
+	String path = IMG_PATH + (String)"lenna.bmp";
+	Mat src = imread(path, IMREAD_GRAYSCALE);
+
+	if (src.empty()) {
+		cerr << "image load fail" << endl;
+		return;
+	}
+
+	//cout << "sum : " << (int)sum(src)[0] << endl;
+	//cout << "sum : " << (int)sum(src)[1] << endl;
+	//cout << "sum : " << (int)sum(src)[2] << endl;
+	//cout << "mean : " << (int)mean(src)[0] << endl;
+	//cout << "mean : " << (int)mean(src)[1] << endl;
+	//cout << "mean : " << (int)mean(src)[2] << endl;
+
+	//cout << sum(src) << endl;
+	//cout << mean(src) << endl;
+
+	double minVal, maxVal;
+	Point minPos, maxPos;
+	minMaxLoc(src, &minVal, &maxVal, &minPos, &maxPos);
+
+	cout << "minVal : " << minVal << ", at : " << minPos << endl;
+	cout << "maxVal : " << maxVal << ", at : " << maxPos << endl;
+
+
+}
+
+void NormalEx() {
+	Mat src = Mat_<float>({ 1,5 }, { -1.f, -0.5f, 0.f, 0.5f, 1.5f });
+	Mat dst;
+	normalize(src, dst, 0, 255, NORM_MINMAX, CV_8UC1);
+	cout << src << endl;
+	cout << dst << endl;
+
+}
