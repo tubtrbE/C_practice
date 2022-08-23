@@ -9,6 +9,7 @@
 using namespace std;
 using namespace cv;
 
+String path_lenna = IMG_PATH + (String)"lenna.bmp";
 
 Mat img;
 Point ptOld;
@@ -51,6 +52,8 @@ void CopyTo();
 void timeInverse();
 void SumEx();
 void NormalEx();
+void brightness();
+void brightness2();
 
 int main() {
 
@@ -74,7 +77,9 @@ int main() {
 //	CopyTo();
 //	timeInverse();
 //	SumEx();
-	NormalEx();
+//	NormalEx();
+//	brightness();
+	brightness2();
 	destroyAllWindows();
 	return 0;
 
@@ -831,4 +836,41 @@ void NormalEx() {
 	cout << src << endl;
 	cout << dst << endl;
 
+}
+
+void brightness() {
+
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+
+	Mat dst = src + 100;
+
+	imshow("src", src);
+	imshow("dst", dst);
+
+	waitKey();
+
+}
+void brightness2() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+
+	Mat dst(src.rows, src.cols, src.type());
+
+	for (int j = 0; j < src.rows; j++) {
+		for (int i = 0; i < src.cols; i++) {
+			dst.at<uchar>(j, i) = src.at<uchar>(j, i) + 100;
+		}
+	}
+	imshow("src", src);
+	imshow("dst", dst);
+
+	waitKey();
 }
