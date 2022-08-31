@@ -1,4 +1,4 @@
-#define IMG_PATH "C:/Users/Park/Desktop/OpenCV(송희강)/img/"
+#define IMG_PATH "C:/Users/Dell/Desktop/OpenCV(송희강)/img/"
 #include "opencv2/opencv.hpp"
 #include <iostream>
 #include <vector>
@@ -10,6 +10,9 @@ using namespace std;
 using namespace cv;
 
 String path_lenna = IMG_PATH + (String)"lenna.bmp";
+String path_airplane = IMG_PATH + (String)"airplane.bmp";
+String path_lenna_256 = IMG_PATH + (String)"lenna256.bmp";
+String path_square = IMG_PATH + (String)"square.bmp";
 
 Mat img;
 Point ptOld;
@@ -18,7 +21,6 @@ void on_mouse(int event, int x, int y, int flags, void*);
 int r_flag;
 Point rec_pt1;
 Point rec_pt2;
-
 
 void readImgs();
 int TestMat();
@@ -54,6 +56,30 @@ void SumEx();
 void NormalEx();
 void brightness();
 void brightness2();
+void brightness_track();
+void contrast1();
+void contrast2();
+Mat CalcGrayHist(const Mat& img);
+Mat GetGrayHistImage(const Mat& hist);
+void MakeGrayHist();
+void Histogram_stretching();
+void histogram_equlization();
+void AddTest();
+void AddTest2();
+void SubtractTest();
+void LogicTest();
+void filter_embossing();
+void blurring_mean();
+void blurring_gaussian();
+void UnsharpMask();
+void NoiseGaussian();
+void FilterMedian();
+void FilterBilateral();
+void AffineTransform();
+void AffineTranslation();
+void AffineShear();
+void AffineScale();
+void AffineRotation();
 
 int main() {
 
@@ -79,13 +105,34 @@ int main() {
 //	SumEx();
 //	NormalEx();
 //	brightness();
-	brightness2();
+//	brightness2();
+//	brightness_track();
+//	contrast1();
+//	contrast2();
+//	MakeGrayHist();
+//	Histogram_stretching();
+//	histogram_equlization();
+//	AddTest();
+//	AddTest2();
+//	SubtractTest();
+//	LogicTest();
+//	filter_embossing();
+//	blurring_mean();
+//	blurring_gaussian();
+//	UnsharpMask();
+//	NoiseGaussian();
+//	FilterMedian();
+//	FilterBilateral();
+//	AffineTransform();
+//	AffineTranslation();
+//	AffineShear();
+//	AffineScale();
+	AffineRotation();
 	destroyAllWindows();
 	return 0;
 
 
 }
-
 
 void readImgs() {
 	Mat imgs[7];
@@ -873,4 +920,777 @@ void brightness2() {
 	imshow("dst", dst);
 
 	waitKey();
+}
+
+/* brightness 관련한 Call back 함수이다.*/
+void on_brightness(int pos, void* userdata) {
+	
+	Mat src = *(Mat*)userdata; /*Track bar userdata 를 받는다.*/
+	Mat dst = src + pos;
+	imshow("dst", dst);
+}
+
+void brightness_track() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+	namedWindow("dst");
+	createTrackbar("Brightness", "dst", 0, 100, on_brightness, (void*)&src);
+	on_brightness(0, (void*)&src); /*0일때 강제로 넣어주지 않으면 출력되지 않는다*/
+	waitKey();
+}
+
+/*명암비 조절*/
+void contrast1() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+	
+	/*open cv 는 실수형 자료형과 Mat 객체 가이의 곱셈 연산자에 대해서 재정의(operator)를 제공 한다
+	*뿐만 아니라 결과 행렬에 대해서 포화 연산 또한 함께 수행한다
+	*이러한 방식으로 상수를 단순하게 곱하여 명암비를 조절하는 방식은 잘 사용되지 않는다.
+	*- 물체 구분이 잘된다 (명암비가 높다)
+	*/
+
+	float s = 2.f;     /*float 형식을 따로 선언해 주는 이유는 뭘까?*/
+	Mat dst = s * src; /*모든 픽셀 값에 2.0을 곱한다*/
+
+	imshow("src", src);
+	imshow("dst", dst);
+
+	waitKey();
+}
+
+/*따라서 contrast 1 이 아닌 다음과 같은 방식을 사용한다*/
+/*
+- 명암비를 효과적으로 높이려면 밝은것은 더밝게 어두운것은 더 어둡게 한다 
+- 그때 기준 값을 픽셀의 평균값으로 한다(sum, mean 함수 이용)거나 스케일 중간값인 128 을 이용 하는 방법이 있다
+- 명암비를 낮추려면 위와 같은 특징을 반대로 적용하여 주면된다
+*/
+void contrast2() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+	
+	/*scale 중간값인 128을 이용 하는 경우*/
+	/*alpha
+	- 알파 음수인 경우 명암비 감소
+	- 알파 양수인 경우 명암비 증가 
+	- 쓰레스 홀드 (임계값) 이용 가능
+	*/
+	float alpha = 1.f;
+	float alpha2 = -0.5f;
+	Mat dst1 = src + (src - 128) * alpha;
+	Mat dst2 = src + (src - 128) * alpha2;
+
+	/*모든 픽셀의 평균값을 이용하는 경우*/
+	int avg = (int)mean(src)[0];
+	cout << "avg : " << avg << endl;
+	Mat dst3 = src + (src - avg) * alpha;
+	Mat dst4 = src + (src - avg) * alpha2;
+
+	imshow("src", src);
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+	imshow("dst3", dst3);
+	imshow("dst4", dst4);
+	waitKey();
+}
+
+/*히스토그램 
+- 영상 픽셀 값 분포를 그래프로 나타낸것 
+- 히스토 그램의 가로 : bin
+- 그레이 스케일 영상의 경우 256개의 빈을 구하는것이 일반적이다.
+- 히스토 그램을 전부 다 더한 값은 모든 픽셀 카운트 값이다.
+
+*/
+
+void MakeGrayHist() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "brightness imread fail" << endl;
+		return;
+	}
+
+	Mat hist = CalcGrayHist(src);
+	hist = GetGrayHistImage(hist);
+
+
+	float alpha = 0.3f;
+	float alpha2 = -0.5f;
+	Mat dst1 = src + (src - 128) * alpha;
+	Mat dst2 = src + (src - 128) * alpha2;
+
+	Mat hist1 = CalcGrayHist(dst1);
+	hist1 = GetGrayHistImage(hist1);
+
+	Mat hist2 = CalcGrayHist(dst2);
+	hist2 = GetGrayHistImage(hist2);
+
+
+	imshow("src", src);
+	imshow("hist", hist);
+
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+
+	imshow("hist1", hist1);
+	imshow("hist2", hist2);
+	waitKey();
+}
+
+/*히스토 그램을 계산하는 함수*/
+Mat CalcGrayHist(const Mat& img) {
+	CV_Assert(img.type() == CV_8UC1);
+	Mat hist;
+	int channels[] = { 0 };
+
+	int dims = 1; /*1차원 행렬로 하겠다* 행갯수 255 열갯수 1*/
+	const int histSize[] = { 256 }; /*히스토그램 사이즈*/
+	
+	/*
+	<<ranges>>
+	- 최대값 256  포함하지 않는다.
+	- 최소값 0    포함한다
+	*/
+
+	float graylevel[] = { 0, 256 }; 
+	const float* ranges[] = { graylevel };
+	calcHist(&img, 1, channels, noArray(), hist, dims, histSize, ranges);
+	return hist;
+}
+
+/* 히스토 그램을 그려주는 함수*/
+Mat GetGrayHistImage(const Mat& hist) {
+	
+	CV_Assert(hist.type() == CV_32FC1); // 픽셀 값이기 때문에 32bit 로 되어있다
+	CV_Assert(hist.size() == Size(1, 256));
+
+	double histMax;// 최대값을 기준 비율 로써 히스토 그램을 그려주기 위해서 최대 값을 찾는다
+	minMaxLoc(hist, 0, &histMax);
+	Mat imgHist(100, 256, CV_8UC1, Scalar(255)); 
+
+	for (int i = 0; i < 256; i++) {
+		line(imgHist, Point(i, 100), Point(i, 100 - cvRound(hist.at<float>(i, 0) * 100 / histMax)), Scalar(0));
+		/*
+		- pt1 : 가로축 이동하면서 위치
+		- pt2 : 검은색 막대기를 그릴 포인트 위치
+		*/
+	}
+	return imgHist;
+
+}
+
+/*히스토그램 스트레칭(입력구간)
+- 히스토그램이 그레이 스케일 구간에 걸쳐서 나타나도록 변경한다. 
+- 명암비가 높아진다
+*/
+
+void Histogram_stretching() {
+	Mat src = imread(path_airplane, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "Histogram_stretching imread fail" << endl;
+		return;
+	}
+
+	double gmin, gmax;
+	minMaxLoc(src, &gmin, &gmax);
+
+	Mat dst = (src - gmin) * 255 / (gmax - gmin);
+
+	imshow("src", src);
+	imshow("srHist", GetGrayHistImage(CalcGrayHist(src)));
+
+	imshow("dst", dst);
+	imshow("dstHist", GetGrayHistImage(CalcGrayHist(dst)));
+	waitKey();
+}
+
+/*히스토그램 평활화(전구간)
+- 특정 그레이 스케일 값에서 픽셀 분포가 뭉쳐있는 경우 이를 넓게 펼쳐준다.
+- 피크값이 높은것은 늘려준다
+- 피크값이 낮은것은 좁혀준다
+*/
+
+void histogram_equlization() {
+	Mat src = imread(path_airplane, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "Histogram_stretching imread fail" << endl;
+		return;
+	}
+
+	/* equalizeHist()
+	- 많이 사용하기 때문에 함수화 되어있다.
+	- 8UC_1 이미지 값만 받을 수 있다.
+	*/ 
+	Mat dst;
+	equalizeHist(src, dst);
+
+	imshow("src", src);
+	imshow("srHist", GetGrayHistImage(CalcGrayHist(src)));
+
+	imshow("dst", dst);
+	imshow("dstHist", GetGrayHistImage(CalcGrayHist(dst)));
+	waitKey();
+}
+
+/*산술연산
+- 보통 빼주는 연산을 자주 사용한다 : 문제 발생지점과 정상점 과 의 차이지점을 찾기 위해서
+- 덧셈 연산시에는 포화 연산또한 같이 행해 주어야 한다.|| add 함수의 경우 포화연산을 자동으로 행해준다.
+- 특정한 지점을 더해주고 싶은경우 마스크 연산을 사용하면 된다.
+- 두 사진 중 가중치를 정해줄 수 있다.
+
+*/
+void AddTest() {
+	Mat src1 = imread(path_lenna, IMREAD_GRAYSCALE);
+	Mat src2 = imread(path_airplane, IMREAD_GRAYSCALE);
+	resize(src1, src1, Size(480, 480));
+	resize(src2, src2, Size(480, 480));
+
+	Mat dst1;
+	Mat dst2;
+	add(src1, src2, dst1);
+	dst2 = src1 + src2;
+
+	imshow("src1", src1);
+	imshow("src2", src2);
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+
+	waitKey();
+
+}
+
+void AddTest2() {
+	Mat src1 = imread(path_lenna, IMREAD_GRAYSCALE);
+	Mat src2 = imread(path_airplane, IMREAD_GRAYSCALE);
+	resize(src1, src1, Size(480, 480));
+	resize(src2, src2, Size(480, 480));
+
+	Mat dst;
+
+	addWeighted(src1, 0.5, src2, 0.8, 0, dst);
+	imshow("src1", src1);
+	imshow("src2", src2);
+	imshow("dst", dst);
+	waitKey();
+}
+
+/* 
+- 음수를 0으로 처리해주는 포화연산이 필요하다
+- subtract()을 이용한다.
+- add() 함수와 인자는 같다.
+- 뺄셈 대상이 되는 영상의 '순서'에 따라서 결과값이 다르게 나타난다
+- 차영상 : 순수한 두영상의 차이값
+-> 차이 연산은 연산결과에 절대값을 취하는 연산이다.
+-> 차이 연산은 변화가 있는 영역을 쉽게 찾을 수 있다.
+*/
+void SubtractTest() {
+
+	VideoCapture cap(0);
+	if (!cap.isOpened()) {
+		cerr << "Camera is not 1" << endl;
+		cap.open(1);
+	}
+
+	int w = cvRound(cap.get(CAP_PROP_FRAME_WIDTH));
+	int h = cvRound(cap.get(CAP_PROP_FRAME_HEIGHT));
+	double fps = 30;
+	int delay = (1000 / fps);
+
+	cout << "w : " << w << endl;
+	cout << "h : " << h << endl;
+
+	Mat camera;
+	Mat frame0;
+	Mat frame1;
+	Mat dst;
+	int flag = 0;
+	int flag_diff = 0;
+
+	while (1) {
+		cap >> camera;
+		cvtColor(camera, camera, COLOR_BGR2GRAY);
+		int keycode = waitKey(delay);
+		imshow("camera", camera);
+
+		if (keycode == 's') {
+			flag++;
+			if (flag == 1) {
+				frame0 = camera;
+
+			}
+			if (flag == 2) {
+				frame1 = camera;
+
+				absdiff(frame0, frame1, dst);
+				imshow("frame0", frame0);
+				imshow("frame1", frame1);
+				imshow("dst", dst);
+				flag = 0;
+			}
+		}
+		if (keycode == 'w') {
+			flag_diff = 1;
+		}
+		if (flag_diff == 1) {
+
+			absdiff(frame0, camera, dst);
+			imshow("dst", dst);
+		}
+
+		if (keycode == 27) {
+			break;
+		}
+	}
+
+	cap.release();
+}
+
+void LogicTest() {
+	Mat src1 = imread(path_lenna_256, IMREAD_GRAYSCALE);
+	Mat src2 = imread(path_square, IMREAD_GRAYSCALE);
+
+	if (src1.empty() || src2.empty()) {
+		cerr << "Logic image Load fail" << endl;
+		return;
+	}
+
+	imshow("src1", src1);
+	imshow("src2", src2);
+
+	Mat dst1, dst2, dst3, dst4;
+
+	bitwise_and(src1, src2, dst1);
+	bitwise_or(src1, src2, dst2);
+	bitwise_xor(src1, src2, dst3);
+	bitwise_not(src1, dst4);
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+	imshow("dst3", dst3);
+	imshow("dst4", dst4);
+	waitKey();
+
+}
+/**
+- 다른 라이브러리는 embossing 함수 같은 필터링 함수가 이미 존재 한다. 
+이를 알맞은 파라미터를이용하여 사용하면된다.
+- filter 2D 함수에서 anchor, delta, bordertype 인자는 기본값을 가지고 있다.
+- 엠보싱 엣지 특성상 수평, 수직이 아닌 대각선 엣지를 더 잘 검출한다. 
+*/
+void filter_embossing() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+
+		cerr << "imread fail" << endl;
+		return;
+	
+	}
+
+	float data[] = { -1,-1,0,-1,0,1,0,1,1 };
+	Mat emboss(3,3,CV_32FC1, data);
+
+	Mat dst;
+	filter2D(src, dst, -1, emboss, Point(-1, -1), 0);
+
+
+	imshow("src", src);
+	imshow("dst", dst);
+
+	waitKey(0);
+
+}
+/**
+블러링(스무딩): 영상 부드럽게 하기 
+- 평균값 필터, 가우시안 필더등이 이 종류에 해당한다.
+- 입력 영상에 존재하는 잡음의 영향을 제거하는 전처리 과정으로도 사용된다.
+*/
+
+#define BLUR_NUM 11
+/**
+평균값 필터
+- 평균값 필터는 마스크의 크기가 커지면 커질 수록 더욱 부드러운 
+느낌을 표현 가능하다
+- 더 부드럽게 할 수록 연산량이 증가한다.
+*/
+void blurring_mean() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	//Mat dst;
+	//for (int ksize = 3; ksize <= 13; ksize += 2) {
+	//	blur(src, dst, Size(ksize, ksize));
+
+	//	String desc = format("Mean : %d%d", ksize, ksize);
+	//	putText(dst, desc, Point(10, 30), FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255), 1, LINE_AA);
+	//	imshow("dst", dst);
+	//	waitKey(0);
+	//}
+
+	float data[BLUR_NUM * BLUR_NUM] = {0};
+	for (int i = 0; i < sizeof(data) / sizeof(float); i++) {
+		data[i] = 1;
+		data[i] = data[i] / (BLUR_NUM * BLUR_NUM);
+	}
+	Mat emboss(BLUR_NUM, BLUR_NUM, CV_32FC1, data);
+
+	Mat dst;
+	filter2D(src, dst, -1, emboss, Point(-1, -1), 0);
+
+	Mat dst2;
+	blur(src, dst2, Size(BLUR_NUM, BLUR_NUM));
+
+	Mat dst3;
+	dst3 = src - dst2;
+
+	imshow("src", src);
+	imshow("dst", dst);
+	imshow("dst2", dst2);
+	imshow("dst3", dst3);
+	waitKey(0);
+
+}
+
+/**
+가우시안 필터
+- 가우시안 분포를 따른다
+- 가까우면 가중치가 높고 멀게되면 가중치가 작아진다.
+- 영상의 가우시안 필터는 평균이 0인 분포 함수를 사용한다.
+- 가우시안 필터 마스크 크기는 보통 (시그마 + 1) == 표준편차에 의한값
+*/
+
+void blurring_gaussian() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+	Mat dst;
+	for (int sigma = 1; sigma <= 5; sigma++) {
+		GaussianBlur(src, dst, Size(), (double)sigma);
+
+		String text = format("SIGMA = %d", sigma);
+		putText(dst, text, Point(10, 30), FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255), 1, LINE_AA);
+		imshow("dst", dst);
+		waitKey(0);
+	}
+}
+
+
+/**
+샤프닝 - 영상 날카롭게 하기 
+언샤프 마스크 필터
+*/
+
+void UnsharpMask() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	float alpha = 1.f;
+	for (;;) {
+		int sigma = 1;
+		int keyboard = waitKey();
+		// blurred 로 blur 처리와 원본 사이의 차이로 G(x) 를 구한다.
+		Mat blurred;
+		GaussianBlur(src, blurred, Size(), (double)sigma);
+
+		// alpha 는 그 차이를 배수 로 하여 사용자가 가중치를 선택 할 수 있도록 한다.
+		
+
+		if (keyboard == 'a') {
+			Mat dst = (1 + alpha) * src - alpha * blurred;
+			String text = format("SIGMA = %d", sigma);
+			putText(dst, text, Point(10, 30), FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255), 1, LINE_AA);
+			imshow("dst", dst);
+			alpha++;
+		}
+		if (keyboard == 'x') {
+			break;
+		}
+	}
+}
+
+/**
+노이즈를 추가해준다
+*/
+void NoiseGaussian() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+	for (int stddev = 10; stddev <= 30; stddev += 10) {
+		Mat noise(src.size(), CV_32SC1);
+		randn(noise, 0, stddev);
+
+		Mat dst;
+		add(src, noise, dst, Mat(), CV_8U);
+
+		String desc = format("stddev = %d", stddev);
+		putText(dst, desc, Point(10, 30), FONT_HERSHEY_SIMPLEX, 1.0, Scalar(255), 1, LINE_AA);
+		imshow("dst", dst);
+		waitKey(0);
+	}
+}
+
+
+/**
+미디언 필터
+- 잡음 픽셀값과 주변 픽셀값 차이가 큰경우에 효과적으로 동작한다.
+- 자기자신 픽셀값과 주변 값 중에서 중간값을 선택 하여 결과 영상 픽셀 값으로 설정하는 필터링 
+- boder replicate 방식으로 가장자리 외곽 픽셀값을 설정한다 
+*/
+
+void FilterMedian() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	int num = (int)(src.total() * 0.1);
+	for (int i = 0; i < num; i++) {
+		int x = rand() % src.cols;
+		int y = rand() % src.rows;
+		src.at<uchar>(y, x) = (i % 2) * 255;
+	}
+
+	Mat dst1;
+	GaussianBlur(src, dst1, Size(), 1);
+
+	Mat dst2;
+	medianBlur(src, dst2, 3);
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+	waitKey(0);
+}
+
+/**
+양방향 필터 - 에지를 죽이지 않으면서 필터링을 하는것
+- 픽셀값 차이가 크면(엣지 이기 때문에) 0으로 채워넣고(처리를 하지 않는다) , 가우시안 필터 고정점과 픽셀차이가 비슷 하면 팔터값을 가져온다. 
+- 거리(가우시안 필터) * 픽셀값 차이(가우시안 필터) 두개를 합친것
+- 연산량이 엄청 많다. ==> ROI 를 사용 하는 이유 관심 영역 만 필터링을 해주면 되기 때문이다. 
+
+*/
+
+void FilterBilateral() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	Mat noise(src.size(), CV_32SC1);
+	randn(noise, 0, 5);
+	add(src, noise, src, Mat(), CV_8U);
+
+	Mat dst1;
+	GaussianBlur(src, dst1, Size(), 10);
+
+	Mat dst2;
+	bilateralFilter(src, dst2,-1, 10, 5);
+
+	Mat dst3 = src - dst1;
+	Mat dst4 = src - dst2;
+
+	imshow("src", src);
+	imshow("dst1", dst1);
+	imshow("dst2", dst2);
+	imshow("dst3", dst3);
+	imshow("dst4", dst4);
+	waitKey();
+}
+
+
+/**
+어파인 변환
+- 여유(마진) 을 주는 이유는 화면 크기가 더커야 좌표값을 이동시켜도 사진이 손상되지 않기 때문이다.
+- 회전 때문에 어파인 변환은 실수형 행렬로 이루어져 있다.
+- 도형의 필요 최소 요소 3가지 
+==> 원본 꼭지점 3가지 변환후 에 꼭지점 3가지 
+*/
+
+void AffineTransform() {
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	Point2f srcPts[3], dstPts[3];
+	srcPts[0] = Point2f(0, 0);
+	srcPts[1] = Point2f(src.cols-1, 0);
+	srcPts[2] = Point2f(src.cols - 1, src.rows - 1);
+
+	dstPts[0] = Point2f(50, 50);
+	dstPts[1] = Point2f(src.cols - 100, 100);
+	dstPts[2] = Point2f(src.cols - 50, src.rows - 50);
+	Mat M = getAffineTransform(srcPts, dstPts);
+
+	Mat dst;
+	warpAffine(src, dst, M, Size());
+
+	imshow("src", src);
+	imshow("dst", dst);
+	waitKey();
+}
+
+/**
+이동변환
+*/
+
+void AffineTranslation() {
+
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	Mat M = Mat_<double>({ 2,3 }, { 1,0,150,0,1,100 });
+
+	Mat dst;
+	warpAffine(src, dst, M, Size(src.cols-1, src.rows-1) + Size(150,100));
+
+	imshow("src", src);
+	imshow("dst", dst);
+	waitKey();
+}
+
+/**
+전단변환
+- 원점은 이동하지 않는다. 
+*/
+
+void AffineShear() {
+
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+	imshow("src", src);
+
+	double mx = 0.3;
+	double my = 0.3;
+	Mat M = Mat_<double>({ 2,3 }, { 1,mx,0,0,1,0 });
+	Mat M2 = Mat_<double>({ 2,3 }, { 1,0,0,my,1,0 });
+
+	Mat dst;
+	Mat dst2;
+
+	warpAffine(src, dst, M, Size(cvRound(src.cols + src.rows * mx), src.rows));
+	warpAffine(src, dst2, M2, Size(src.cols, cvRound(src.rows + src.cols*mx)));
+
+	imshow("src", src);
+	imshow("dst", dst);
+	imshow("dst2", dst2);
+	waitKey();
+}
+
+/**
+크기 변환
+- dsize : 크기가 원본보다 더 크더라도 자동적으로 처리해준다. 
+- 보간법(확장시)
+==> INTER_NEAREST : 최근방 이웃 보간법, 간단하지만 결과물이 좋지 않다.
+==> INTER_LINEAR  : 양선형 보간법, 
+==> INTER_CUBIC   :3차 보간법
+-------------------------------------------------------------------
+- 보간법(축소시)
+==> 란초스 보간법
+
+*/
+
+void AffineScale() {
+
+	Mat src = imread(path_lenna, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+
+	TickMeter tm;
+	Mat dst1, dst2, dst3, dst4;
+	tm.start();
+	resize(src, dst1, Size(), 4, 4, INTER_NEAREST);
+	imshow("dst1", dst1);
+	tm.stop();
+	cout << "INTER_NEAREST : " << tm.getAvgTimeMilli() << "ms" << endl;
+	waitKey();
+
+	tm.start();
+	resize(src, dst2, Size(1920, 1280), INTER_LINEAR);
+	imshow("dst2", dst2);
+	tm.stop();
+	cout << "INTER_LINEAR : " << tm.getAvgTimeMilli() << "ms" << endl;
+	waitKey();
+
+	tm.start();
+	resize(src, dst3, Size(1920, 1280), 0, 0, INTER_CUBIC);
+	imshow("dst3", dst3);
+	tm.stop();
+	cout << "INTER_CUBIC : " << tm.getAvgTimeMilli() << "ms" << endl;
+	waitKey();
+
+	tm.start();
+	resize(src, dst4, Size(1920, 1280), 0, 0, INTER_LANCZOS4);
+	imshow("dst4", dst4);
+	tm.stop();
+	cout << "INTER_LANCZOS4 : " << tm.getAvgTimeMilli() << "ms" << endl;
+	waitKey();
+
+	imshow("src", src);
+
+	waitKey();
+}
+
+/**
+원점을 기준으로 영상을 반시계 방향으로 회전
+*/
+
+void AffineRotation() {
+	Mat src = imread(path_airplane, IMREAD_GRAYSCALE);
+	if (src.empty()) {
+		cerr << "imread fail" << endl;
+		return;
+	}
+
+//	Point2f cp(src.cols * 0.5, src.rows * 0.5);
+
+//	Mat M = getRotationMatrix2D(cp, 30, 1);
+//	Mat dst;
+	Mat M = Mat_<double>({ 2,3 }, { 1,0,150,0,1,100 });
+
+	// 해당하는 각도의 변환된 윈도우 생성 
+	warpAffine(src, src, M, Size(src.cols - 1, src.rows - 1) + Size(150, 100));
+
+	// 확장된 윈도우에서 중심점 찾아서 이동
+
+	// dst 사진 getRotation 함수 이용하여 각도만큼 회전
+
+	//circle(dst, cp, 30, Scalar(255, 255, 0), -1, LINE_AA);
+//	resize(dst,dst, Size(800, 400));
+	imshow("src", src);
+//	imshow("dst", dst);
+	waitKey();
+
+
 }
